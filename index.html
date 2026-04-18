@@ -479,32 +479,55 @@ let geneData = {};
 
 async function loadCSV() {
   try {
-    const res   = await fetch('coffee_SE_data.csv');
-    const text  = await res.text();
-    const lines = text.trim().split('\n');
-    const delim = lines[0].includes('\t') ? '\t' : ',';
-    const header = lines[0].split(delim).map(h => h.trim());
-    const colIdx = {};
-    header.forEach((h,i) => { colIdx[h] = i; });
 
-    for (let r = 1; r < lines.length; r++) {
-      const cols = lines[r].split(delim).map(c => c.trim());
+    const [res1, res2] = await Promise.all([
+      fetch('coffee_SE_data_part1.csv'),
+      fetch('coffee_SE_data_part2.csv')
+    ]);
+
+    const text1 = await res1.text();
+    const text2 = await res2.text();
+
+    const lines1 = text1.trim().split('\n');
+    const lines2 = text2.trim().split('\n').slice(1); // remove header
+
+    const allLines = [...lines1, ...lines2];
+
+    const delim = allLines[0].includes('\t') ? '\t' : ',';
+
+    const header = allLines[0].split(delim).map(h => h.trim());
+
+    const colIdx = {};
+    header.forEach((h, i) => { colIdx[h] = i; });
+
+    for (let r = 1; r < allLines.length; r++) {
+      const cols = allLines[r].split(delim).map(c => c.trim());
       if (!cols[0]) continue;
+
       const id = cols[0].toUpperCase();
       const stageVals = {};
+
       STAGES.forEach(st => {
         const vals = [];
+
         for (let rep = 1; rep <= 12; rep++) {
           const key = `${st.sTag}_R${String(rep).padStart(2,'0')}`;
-          const ci  = colIdx[key];
-          if (ci !== undefined && cols[ci] !== '') vals.push(parseFloat(cols[ci]));
+          const ci = colIdx[key];
+
+          if (ci !== undefined && cols[ci] !== '') {
+            vals.push(parseFloat(cols[ci]));
+          }
         }
+
         stageVals[st.sTag] = vals;
       });
+
       geneData[id] = stageVals;
     }
+
     console.log(`Loaded ${Object.keys(geneData).length} genes.`);
-  } catch(e) {
+
+  } catch (e) {
     console.warn('CSV load error:', e.message);
   }
 }
