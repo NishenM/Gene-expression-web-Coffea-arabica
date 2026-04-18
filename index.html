@@ -88,7 +88,6 @@ body {
 }
 #go-btn:hover { background: #7a4f28; }
 
-/* Reset button */
 #reset-btn {
   background: transparent;
   color: var(--accent);
@@ -102,6 +101,19 @@ body {
   transition: background .18s, color .18s;
 }
 #reset-btn:hover { background: #d6cfc0; }
+
+/* ── LOADING INDICATOR ── */
+#loading-bar {
+  display: none;
+  background: #eee8d8;
+  border-bottom: 1px solid var(--border);
+  padding: .5rem 1rem;
+  text-align: center;
+  font-size: .88rem;
+  color: var(--muted);
+  font-style: italic;
+}
+#loading-bar.visible { display: block; }
 
 /* ── MAIN ── */
 #main { max-width: 1340px; margin: 0 auto; padding: 1.2rem 1rem 3rem; }
@@ -124,7 +136,6 @@ body {
 
 /* ── NOT-FOUND BANNER ── */
 #not-found-banner {
-  display: none;
   background: #fdf3f0;
   border: 1.5px solid #d4826a;
   border-radius: 5px;
@@ -212,7 +223,7 @@ body {
 .bar-mean { font-size: .85rem; font-weight: 600; color: var(--text); white-space: nowrap; }
 .bar-sd   { font-size: .73rem; color: var(--muted); white-space: nowrap; }
 
-/* Stage name — full width, wrapped */
+/* Stage name */
 .stage-name {
   font-size: .82rem;
   color: var(--muted);
@@ -267,7 +278,6 @@ body {
 }
 .tooltip-summary em { color: #e8c890; font-style: normal; font-weight: 600; }
 
-/* Show tooltip only when data is loaded */
 .stage-card.has-data:hover .rep-tooltip { display: block; }
 
 /* ── LEGEND ── */
@@ -303,7 +313,7 @@ body {
 #reference-block a { color: var(--link); text-decoration: none; border-bottom: 1px dotted var(--link); }
 #reference-block a:hover { color: var(--accent); }
 
-/* ── INTRO TEXT (always visible) ── */
+/* ── INTRO TEXT ── */
 #intro-text {
   padding: .8rem 0 1.2rem;
   font-size: .95rem;
@@ -329,10 +339,12 @@ body {
   <button id="reset-btn" onclick="resetView()">RESET</button>
 </div>
 
+<!-- LOADING BAR -->
+<div id="loading-bar">⏳ Loading dataset, please wait…</div>
+
 <!-- MAIN -->
 <div id="main">
 
-  <!-- Intro shown before search -->
   <div id="intro-text">
     Enter a Gene ID above and press <strong style="font-style:normal;">GO</strong> to overlay expression values across all 12 developmental stages.
     Hover any stage card to inspect individual replicate values.
@@ -349,13 +361,13 @@ body {
     </div>
   </div>
 
-  <!-- Gene info bar (shown after successful search) -->
+  <!-- Gene info bar -->
   <div id="gene-info-bar">
     <span id="gene-id-display"></span>
     <a id="download-link" onclick="downloadCSV()">&#8595; Download normalized data (CSV)</a>
   </div>
 
-  <!-- STAGE GRID — always rendered, images always visible -->
+  <!-- STAGE GRID -->
   <div id="stage-grid"></div>
 
   <!-- LEGEND -->
@@ -385,7 +397,6 @@ body {
       Color scale is relative to the minimum and maximum expression across all 12 stages for the queried gene.
     </p>
 
-    <!-- Reference -->
     <div id="reference-block">
       <strong>Image reference</strong>
       Awada R, Lepelley M, Breton D, Charpagne A, Campa C, Berry V, Georget F, Breitler JC, Léran S, Djerrab D,
@@ -466,42 +477,54 @@ function buildLegend() {
 /* ══════════════════════════════════════
    STATS
 ══════════════════════════════════════ */
-const avg   = a => a.reduce((s,v)=>s+v,0)/a.length;
+const avg = a => a.reduce((s,v) => s+v, 0) / a.length;
 function stdev(a) {
   const m = avg(a);
-  return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);
+  return Math.sqrt(a.reduce((s,v) => s+(v-m)**2, 0) / a.length);
 }
 
 /* ══════════════════════════════════════
    DATA STORE
 ══════════════════════════════════════ */
 let geneData = {};
+let dataReady = false;
 
 async function loadCSV() {
-  try {
+  // Show loading indicator
+  document.getElementById('loading-bar').classList.add('visible');
 
+  try {
     const [res1, res2] = await Promise.all([
       fetch('coffee_SE_data_part1.csv'),
       fetch('coffee_SE_data_part2.csv')
     ]);
 
+    if (!res1.ok) throw new Error(`Failed to load part1: ${res1.status}`);
+    if (!res2.ok) throw new Error(`Failed to load part2: ${res2.status}`);
+
     const text1 = await res1.text();
     const text2 = await res2.text();
 
     const lines1 = text1.trim().split('\n');
-    const lines2 = text2.trim().split('\n').slice(1); // remove header
+    // Remove the header row from part2 before merging
+    const lines2 = text2.trim().split('\n').slice(1);
 
-    const allLines = [...lines1,...lines2.slice(1)];
+    // ✅ FIX: lines2 already has its header stripped — just spread directly
+    const allLines = [...lines1, ...lines2];
 
+    // Auto-detect delimiter
     const delim = allLines[0].includes('\t') ? '\t' : ',';
 
-    const header = allLines[0].split(delim).map(h => h.trim());
+    const header = allLines[0].split(delim).map(h => h.trim().replace(/^"|"$/g, ''));
 
     const colIdx = {};
     header.forEach((h, i) => { colIdx[h] = i; });
 
     for (let r = 1; r < allLines.length; r++) {
-      const cols = allLines[r].split(delim).map(c => c.trim());
+      const line = allLines[r].trim();
+      if (!line) continue;
+
+      const cols = line.split(delim).map(c => c.trim().replace(/^"|"$/g, ''));
       if (!cols[0]) continue;
 
       const id = cols[0].toUpperCase();
@@ -509,32 +532,36 @@ async function loadCSV() {
 
       STAGES.forEach(st => {
         const vals = [];
-
         for (let rep = 1; rep <= 12; rep++) {
-          const key = `${st.sTag}_R${String(rep).padStart(2,'0')}`;
+          const key = `${st.sTag}_R${String(rep).padStart(2, '0')}`;
           const ci = colIdx[key];
-
-          if (ci !== undefined && cols[ci] !== '') {
-            vals.push(parseFloat(cols[ci]));
+          if (ci !== undefined && cols[ci] !== '' && cols[ci] !== undefined) {
+            const v = parseFloat(cols[ci]);
+            if (!isNaN(v)) vals.push(v);
           }
         }
-
         stageVals[st.sTag] = vals;
       });
 
       geneData[id] = stageVals;
     }
 
-    console.log(`Loaded ${Object.keys(geneData).length} genes.`);
+    dataReady = true;
+    console.log(`✅ Loaded ${Object.keys(geneData).length} genes from both CSV parts.`);
 
   } catch (e) {
-    console.warn('CSV load error:', e.message);
+    console.error('CSV load error:', e.message);
+    document.getElementById('loading-bar').textContent = `⚠️ Error loading dataset: ${e.message}`;
+    document.getElementById('loading-bar').classList.add('visible');
+    return; // leave loading bar visible as error message
   }
+
+  // Hide loading bar on success
+  document.getElementById('loading-bar').classList.remove('visible');
 }
 
 /* ══════════════════════════════════════
-   RENDER EMPTY GRID (always-visible images)
-   Called once on page load
+   RENDER EMPTY GRID
 ══════════════════════════════════════ */
 function buildEmptyGrid() {
   const grid = document.getElementById('stage-grid');
@@ -568,7 +595,7 @@ function buildEmptyGrid() {
 }
 
 /* ══════════════════════════════════════
-   QUERY — overlay expression on existing cards
+   QUERY
 ══════════════════════════════════════ */
 function queryGene() {
   const rawId  = document.getElementById('gene-input').value.trim();
@@ -577,6 +604,11 @@ function queryGene() {
   hideBanner();
 
   if (!geneId) return;
+
+  if (!dataReady) {
+    alert('Dataset is still loading, please wait a moment and try again.');
+    return;
+  }
 
   const sv = geneData[geneId];
   if (!sv) {
@@ -588,20 +620,21 @@ function queryGene() {
   }
 
   // Normalise by mean across stages
-  const means  = STAGES.map(st => avg(sv[st.sTag]));
-  const gMin   = Math.min(...means);
-  const gMax   = Math.max(...means);
-  const gRng   = gMax - gMin || 1;
+  const means = STAGES.map(st => sv[st.sTag].length ? avg(sv[st.sTag]) : 0);
+  const gMin  = Math.min(...means);
+  const gMax  = Math.max(...means);
+  const gRng  = gMax - gMin || 1;
 
-  STAGES.forEach((st, i) => {
+  STAGES.forEach((st) => {
     const vals = sv[st.sTag];
-    const m    = avg(vals);
-    const s    = stdev(vals);
-    const t    = (m - gMin) / gRng;
-    const col  = interpColor(t);
+    if (!vals.length) return;
+
+    const m   = avg(vals);
+    const s   = stdev(vals);
+    const t   = (m - gMin) / gRng;
+    const col = interpColor(t);
     const barW = Math.round(t * 100);
 
-    // Update bar
     document.getElementById(`fill-${st.sTag}`).style.width      = `${barW}%`;
     document.getElementById(`fill-${st.sTag}`).style.background = col;
     document.getElementById(`mean-${st.sTag}`).textContent       = m.toFixed(2);
@@ -631,7 +664,6 @@ function queryGene() {
     document.getElementById(`card-${st.sTag}`).classList.add('has-data');
   });
 
-  // Show info bar and legend
   document.getElementById('gene-info-bar').style.display  = 'flex';
   document.getElementById('gene-id-display').textContent  = `Gene ID: ${geneId}`;
   document.getElementById('legend-wrap').style.display    = 'block';
@@ -658,8 +690,8 @@ function clearBars() {
     if (fill) { fill.style.width = '0%'; fill.style.background = '#e0d8c8'; }
     const meanEl = document.getElementById(`mean-${st.sTag}`);
     if (meanEl) {
-      meanEl.textContent   = '—';
-      meanEl.style.color   = 'var(--muted)';
+      meanEl.textContent      = '—';
+      meanEl.style.color      = 'var(--muted)';
       meanEl.style.fontStyle  = 'italic';
       meanEl.style.fontWeight = '400';
     }
@@ -678,7 +710,7 @@ function clearBars() {
 function showBanner(rawId) {
   const banner = document.getElementById('not-found-banner');
   document.getElementById('nf-body-text').innerHTML =
-    `The gene <code>${rawId}</code> doesn't exist in our dataset, please check the gene ID and try again.`;
+    `The gene <code>${rawId}</code> wasn't found in the dataset. Please check the gene ID and try again.`;
   banner.style.display = 'flex';
 }
 function hideBanner() {
@@ -694,18 +726,18 @@ function downloadCSV() {
   const sv = geneData[geneId];
 
   const repHeaders  = STAGES.flatMap(st =>
-    Array.from({length:12},(_,r) => `${st.code}_${st.sTag}_R${String(r+1).padStart(2,'0')}`)
+    Array.from({length:12}, (_,r) => `${st.code}_${st.sTag}_R${String(r+1).padStart(2,'0')}`)
   );
-  const statHeaders = STAGES.flatMap(st => [`${st.code}_Mean`,`${st.code}_SD`,`${st.code}_n`]);
+  const statHeaders = STAGES.flatMap(st => [`${st.code}_Mean`, `${st.code}_SD`, `${st.code}_n`]);
   const repVals     = STAGES.flatMap(st => sv[st.sTag].map(v => v.toFixed(4)));
   const statVals    = STAGES.flatMap(st => {
     const vals = sv[st.sTag];
     return [avg(vals).toFixed(4), stdev(vals).toFixed(4), vals.length];
   });
 
-  const csv  = [['GeneID',...repHeaders,...statHeaders].join(','),
-                [geneId,...repVals,...statVals].join(',')].join('\n');
-  const blob = new Blob([csv],{type:'text/csv'});
+  const csv  = [['GeneID', ...repHeaders, ...statHeaders].join(','),
+                [geneId, ...repVals, ...statVals].join(',')].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url; a.download = `${geneId}_expression.csv`;
@@ -720,7 +752,7 @@ document.getElementById('gene-input').addEventListener('keydown', e => {
 });
 
 buildLegend();
-buildEmptyGrid();   // images always visible from load
+buildEmptyGrid();
 loadCSV();
 </script>
 </body>
