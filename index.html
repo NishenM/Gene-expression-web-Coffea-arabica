@@ -404,29 +404,29 @@ body {
    STAGE DEFINITIONS
 ══════════════════════════════════════ */
 const STAGES = [
-  { code:'L1', sTag:'S01', img:'www/1.jpg',  title:'L1 — Leaf Explant',
+  { code:'L1', sTag:'S01', img:'1.jpg',  title:'L1 — Leaf Explant',
     desc:'Leaves from greenhouse plants (explant)' },
-  { code:'D1', sTag:'S02', img:'www/2.jpg',  title:'D1 — Dedifferentiation 1 wk',
+  { code:'D1', sTag:'S02', img:'2.jpg',  title:'D1 — Dedifferentiation 1 wk',
     desc:'Explants during dedifferentiation at 1 week' },
-  { code:'D2', sTag:'S03', img:'www/3.jpg',  title:'D2 — Dedifferentiation 2 wk',
+  { code:'D2', sTag:'S03', img:'3.jpg',  title:'D2 — Dedifferentiation 2 wk',
     desc:'Explants during dedifferentiation at 2 weeks' },
-  { code:'D3', sTag:'S04', img:'www/4.jpg',  title:'D3 — Dedifferentiation 5 wk',
+  { code:'D3', sTag:'S04', img:'4.jpg',  title:'D3 — Dedifferentiation 5 wk',
     desc:'Explants during dedifferentiation at 5 weeks' },
-  { code:'C1', sTag:'S05', img:'www/5.jpg',  title:'C1 — Primary Callus',
+  { code:'C1', sTag:'S05', img:'5.jpg',  title:'C1 — Primary Callus',
     desc:'Compact primary callus, 3 months after induction' },
-  { code:'C2', sTag:'S06', img:'www/6.jpg',  title:'C2 — Embryogenic Callus',
+  { code:'C2', sTag:'S06', img:'6.jpg',  title:'C2 — Embryogenic Callus',
     desc:'Embryogenic callus, 7 months after induction' },
-  { code:'C3', sTag:'S07', img:'www/7.jpg',  title:'C3 — Cell Clusters',
+  { code:'C3', sTag:'S07', img:'7.jpg',  title:'C3 — Cell Clusters',
     desc:'Established cell clusters, 4 months in liquid proliferation medium' },
-  { code:'R1', sTag:'S08', img:'www/8.jpg',  title:'R1 — Pro-embryogenic Masses',
+  { code:'R1', sTag:'S08', img:'8.jpg',  title:'R1 — Pro-embryogenic Masses',
     desc:'Pro-embryogenic masses, 1 week in redifferentiation medium after auxin withdrawal' },
-  { code:'R2', sTag:'S09', img:'www/9.jpg',  title:'R2 — Redifferentiation 24 h',
+  { code:'R2', sTag:'S09', img:'9.jpg',  title:'R2 — Redifferentiation 24 h',
     desc:'24 h in redifferentiation medium after reducing cell density' },
-  { code:'R3', sTag:'S10', img:'www/10.jpg', title:'R3 — Redifferentiation 72 h',
+  { code:'R3', sTag:'S10', img:'10.jpg', title:'R3 — Redifferentiation 72 h',
     desc:'72 h in redifferentiation medium after reducing cell density' },
-  { code:'R4', sTag:'S11', img:'www/11.jpg', title:'R4 — Redifferentiation 10 days',
+  { code:'R4', sTag:'S11', img:'11.jpg', title:'R4 — Redifferentiation 10 days',
     desc:'10 days in redifferentiation medium after reducing cell density' },
-  { code:'E1', sTag:'S12', img:'www/12.jpg', title:'E1 — Globular Embryos',
+  { code:'E1', sTag:'S12', img:'12.jpg', title:'E1 — Globular Embryos',
     desc:'Globular embryos after 3 weeks of culture' },
 ];
 
@@ -491,7 +491,7 @@ async function loadCSV() {
     const lines1 = text1.trim().split('\n');
     const lines2 = text2.trim().split('\n').slice(1); // remove header
 
-    const allLines = [...lines1, ...lines2];
+    const allLines = [...lines1,...lines2.slice(1)];
 
     const delim = allLines[0].includes('\t') ? '\t' : ',';
 
