@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gene Expression Map – Coffea arabica Somatic Embryogenesis</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,400&family=Source+Serif+4:wght@300;400;600&display=swap');
+
+:root {
+  --bg:        #f5f2eb;
+  --surface:   #fffefa;
+  --border:    #d6cfc0;
+  --text:      #2b2318;
+  --muted:     #6b5e4a;
+  --accent:    #5c3d1e;
+  --header-bg: #3b2410;
+  --link:      #7a4f28;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Source Serif 4', Georgia, serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 17px;
+}
+
+/* ── HEADER ── */
+#site-header {
+  background: var(--header-bg);
+  color: #f5ede0;
+  text-align: center;
+  padding: 1.5rem 1rem 1.3rem;
+  border-bottom: 3px solid #7a4f28;
+}
+#site-header h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(1.25rem, 3vw, 2rem);
+  font-weight: 500;
+  letter-spacing: .02em;
+  line-height: 1.35;
+}
+#site-header h1 em { font-style: italic; }
+
+/* ── SEARCH BAR ── */
+#search-bar {
+  background: #eee8d8;
+  border-bottom: 1px solid var(--border);
+  padding: .9rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .65rem;
+  flex-wrap: wrap;
+}
+#search-bar label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: .04em;
+}
+#gene-input {
+  border: 1px solid #b8a98a;
+  border-radius: 3px;
+  padding: .4rem .7rem;
+  font-family: 'Source Serif 4', serif;
+  font-size: 1rem;
+  width: 250px;
+  background: var(--surface);
+  color: var(--text);
+}
+#gene-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+#go-btn {
+  background: var(--accent);
+  color: #f5ede0;
+  border: none;
+  border-radius: 3px;
+  padding: .42rem 1rem;
+  font-family: 'Source Serif 4', serif;
+  font-size: .95rem;
+  cursor: pointer;
+  letter-spacing: .06em;
+  transition: background .18s;
+}
+#go-btn:hover { background: #7a4f28; }
+
+#reset-btn {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid #b8a98a;
+  border-radius: 3px;
+  padding: .4rem .85rem;
+  font-family: 'Source Serif 4', serif;
+  font-size: .95rem;
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: background .18s, color .18s;
+}
+#reset-btn:hover { background: #d6cfc0; }
+
+/* ── LOADING INDICATOR ── */
+#loading-bar {
+  display: none;
+  background: #eee8d8;
+  border-bottom: 1px solid var(--border);
+  padding: .5rem 1rem;
+  text-align: center;
+  font-size: .88rem;
+  color: var(--muted);
+  font-style: italic;
+}
+#loading-bar.visible { display: block; }
+
+/* ── MAIN ── */
+#main { max-width: 1340px; margin: 0 auto; padding: 1.2rem 1rem 3rem; }
+
+/* Gene info row */
+#gene-info-bar {
+  display: none;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1.1rem;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+#gene-id-display { font-size: 1.05rem; font-weight: 600; color: var(--accent); letter-spacing: .04em; }
+#download-link {
+  font-size: .9rem; color: var(--link);
+  text-decoration: none; border-bottom: 1px dashed var(--link); cursor: pointer;
+}
+#download-link:hover { color: var(--accent); }
+
+/* ── NOT-FOUND BANNER ── */
+#not-found-banner {
+  background: #fdf3f0;
+  border: 1.5px solid #d4826a;
+  border-radius: 5px;
+  padding: 1.1rem 1.4rem;
+  margin-bottom: 1.2rem;
+  display: none;
+  align-items: flex-start;
+  gap: 1rem;
+}
+#not-found-banner .nf-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+#not-found-banner .nf-text { flex: 1; }
+#not-found-banner .nf-title {
+  font-size: 1rem; font-weight: 600; color: #8b2a12;
+  margin-bottom: .3rem;
+}
+#not-found-banner .nf-body {
+  font-size: .92rem; color: #7a3a28; line-height: 1.55;
+}
+#not-found-banner .nf-body code {
+  background: #f5ddd7; padding: 1px 5px; border-radius: 3px;
+  font-size: .88rem; color: #8b2a12; font-family: monospace;
+}
+
+/* ── STAGE GRID ── */
+#stage-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.1rem 1rem;
+}
+@media (max-width: 960px)  { #stage-grid { grid-template-columns: repeat(3,1fr); } }
+@media (max-width: 620px)  { #stage-grid { grid-template-columns: repeat(2,1fr); } }
+
+/* ── STAGE CARD ── */
+.stage-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Image */
+.stage-img-wrap {
+  width: 100%; aspect-ratio: 4/3;
+  background: #1e1208;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative;
+  border-radius: 4px 4px 0 0;
+}
+.stage-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-placeholder-text {
+  color: #7a6040; font-size: .8rem; font-style: italic; text-align: center; padding: .5rem;
+}
+.stage-label-badge {
+  position: absolute; top: 6px; left: 8px;
+  background: rgba(0,0,0,.65); color: #f5ede0;
+  font-family: 'Playfair Display', serif;
+  font-size: .9rem; font-weight: 500;
+  padding: 2px 9px; border-radius: 2px; letter-spacing: .04em;
+}
+
+/* Bar row */
+.bar-row {
+  display: flex; align-items: stretch; height: 32px;
+  border-top: 1px solid var(--border);
+  cursor: default; position: relative;
+}
+.bar-outer {
+  width: 60%; background: #e8e1d0;
+  border-right: 1px solid var(--border);
+  overflow: hidden; display: flex; align-items: center;
+}
+.bar-fill { height: 100%; transition: width .5s ease; }
+.bar-stats {
+  flex: 1; display: flex; flex-direction: column;
+  justify-content: center; padding: 0 7px; min-width: 0;
+}
+.bar-mean { font-size: .85rem; font-weight: 600; color: var(--text); white-space: nowrap; }
+.bar-sd   { font-size: .73rem; color: var(--muted); white-space: nowrap; }
+
+/* Stage name */
+.stage-name {
+  font-size: .82rem;
+  color: var(--muted);
+  padding: 6px 9px 8px;
+  line-height: 1.45;
+  background: #faf7f0;
+  border-top: 1px solid #e8e0d0;
+  width: 100%;
+  word-wrap: break-word;
+  white-space: normal;
+}
+.stage-name strong {
+  display: block;
+  font-size: .88rem; font-weight: 600;
+  color: var(--accent); margin-bottom: 3px;
+}
+
+/* Tooltip */
+.rep-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%; transform: translateX(-50%);
+  background: #241a0e;
+  color: #f0e6d0;
+  border-radius: 5px;
+  padding: 10px 12px;
+  font-size: .76rem; line-height: 1.65;
+  z-index: 9999; white-space: nowrap;
+  box-shadow: 0 6px 22px rgba(0,0,0,.48);
+  pointer-events: none;
+  font-family: 'Source Serif 4', serif;
+  min-width: 235px;
+}
+.rep-tooltip::after {
+  content: '';
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 7px solid transparent; border-top-color: #241a0e;
+}
+.rep-tooltip-title {
+  font-weight: 600; color: #e8c890;
+  margin-bottom: 5px; font-size: .8rem; letter-spacing: .04em;
+  border-bottom: 1px solid #4a3620; padding-bottom: 4px;
+}
+.bio-group { margin-bottom: 4px; }
+.bio-label { color: #a08060; font-size: .71rem; display: block; margin-bottom: 2px; }
+.bio-vals  { display: flex; gap: 8px; }
+.bio-vals span { color: #d4c4a4; }
+.tooltip-summary {
+  margin-top: 5px; padding-top: 5px;
+  border-top: 1px solid #4a3620; font-size: .75rem;
+}
+.tooltip-summary em { color: #e8c890; font-style: normal; font-weight: 600; }
+
+.stage-card.has-data:hover .rep-tooltip { display: block; }
+
+/* ── LEGEND ── */
+#legend-wrap {
+  display: none; margin-top: 1.8rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 4px; padding: .9rem 1.1rem 1.1rem;
+}
+#legend-scale {
+  display: flex; height: 17px; border-radius: 2px;
+  overflow: hidden; margin: .5rem 0 .35rem; max-width: 580px;
+}
+.legend-labels {
+  display: flex; justify-content: space-between;
+  max-width: 580px; font-size: .78rem; color: var(--muted); margin-bottom: .7rem;
+}
+#legend-wrap .legend-body { font-size: .84rem; color: var(--muted); line-height: 1.58; text-align: justify; }
+#legend-wrap .legend-body + .legend-body { margin-top: .45rem; }
+
+/* ── REFERENCE BLOCK ── */
+#reference-block {
+  margin-top: 1.4rem;
+  padding: .9rem 1.1rem;
+  background: #f0ece2;
+  border-left: 4px solid var(--accent);
+  border-radius: 0 4px 4px 0;
+  font-size: .84rem;
+  color: var(--muted);
+  line-height: 1.65;
+  text-align: justify;
+}
+#reference-block strong { color: var(--accent); display: block; margin-bottom: .35rem; font-size: .88rem; }
+#reference-block a { color: var(--link); text-decoration: none; border-bottom: 1px dotted var(--link); }
+#reference-block a:hover { color: var(--accent); }
+
+/* ── INTRO TEXT ── */
+#intro-text {
+  padding: .8rem 0 1.2rem;
+  font-size: .95rem;
+  color: var(--muted);
+  line-height: 1.65;
+  font-style: italic;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header id="site-header">
+  <h1>Gene Expression Map of <em>Coffea arabica</em> Somatic Embryogenesis</h1>
+</header>
+
+<!-- SEARCH BAR -->
+<div id="search-bar">
+  <label for="gene-input">Gene ID:</label>
+  <input type="text" id="gene-input" placeholder="e.g. LOC140003795" autocomplete="off" />
+  <button id="go-btn" onclick="queryGene()">GO</button>
+  <button id="reset-btn" onclick="resetView()">RESET</button>
+</div>
+
+<!-- LOADING BAR -->
+<div id="loading-bar">⏳ Loading dataset, please wait…</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <div id="intro-text">
+    Enter a Gene ID above and press <strong style="font-style:normal;">GO</strong> to overlay expression values across all 12 developmental stages.
+    Hover any stage card to inspect individual replicate values.
+  </div>
+
+  <!-- Not-found banner -->
+  <div id="not-found-banner">
+    <div class="nf-icon">&#9888;</div>
+    <div class="nf-text">
+      <div class="nf-title">Gene not found in dataset</div>
+      <div class="nf-body" id="nf-body-text">
+        The gene you requested doesn't exist in our dataset, please check the gene ID and try again.
+      </div>
+    </div>
+  </div>
+
+  <!-- Gene info bar -->
+  <div id="gene-info-bar">
+    <span id="gene-id-display"></span>
+    <a id="download-link" onclick="downloadCSV()">&#8595; Download normalized data (CSV)</a>
+  </div>
+
+  <!-- STAGE GRID -->
+  <div id="stage-grid"></div>
+
+  <!-- LEGEND -->
+  <div id="legend-wrap">
+    <div style="font-size:.88rem;font-weight:600;color:var(--accent);letter-spacing:.04em;">Expression level color scale</div>
+    <div id="legend-scale"></div>
+    <div class="legend-labels">
+      <span>Low</span><span>Medium-low</span><span>Medium-high</span><span>High</span>
+    </div>
+    <p class="legend-body">
+      <strong style="color:var(--accent);">Developmental stages:</strong>
+      <strong>L1</strong> — Leaf explant from greenhouse plants &bull;
+      <strong>D1</strong> — Explants during dedifferentiation at 1 week &bull;
+      <strong>D2</strong> — Explants during dedifferentiation at 2 weeks &bull;
+      <strong>D3</strong> — Explants during dedifferentiation at 5 weeks &bull;
+      <strong>C1</strong> — Compact primary callus obtained 3 months after induction &bull;
+      <strong>C2</strong> — Embryogenic callus obtained 7 months after induction &bull;
+      <strong>C3</strong> — Established cell clusters after 4 months in liquid proliferation medium &bull;
+      <strong>R1</strong> — Pro-embryogenic masses at 1 week in redifferentiation medium after auxin withdrawal &bull;
+      <strong>R2</strong> — 24 h in redifferentiation medium after reducing cell density &bull;
+      <strong>R3</strong> — 72 h in redifferentiation medium after reducing cell density &bull;
+      <strong>R4</strong> — 10 days in redifferentiation medium after reducing cell density &bull;
+      <strong>E1</strong> — Globular embryos obtained after 3 weeks of culture.
+    </p>
+    <p class="legend-body">
+      Bar value = mean of 12 replicates (4 biological &times; 3 technical) per stage; &plusmn;SD shown below mean.
+      Color scale is relative to the minimum and maximum expression across all 12 stages for the queried gene.
+    </p>
+
+    <div id="reference-block">
+      <strong>Image reference</strong>
+      Awada R, Lepelley M, Breton D, Charpagne A, Campa C, Berry V, Georget F, Breitler JC, Léran S, Djerrab D,
+      Martinez-Seidel F, Descombes P, Crouzillat D, Bertrand B, Etienne H.
+      Global transcriptome profiling reveals differential regulatory, metabolic and hormonal networks during somatic
+      embryogenesis in <em>Coffea arabica</em>. <em>BMC Genomics.</em> 2023 Jan 24;24(1):41.
+      doi: <a href="https://doi.org/10.1186/s12864-022-09098-z" target="_blank">10.1186/s12864-022-09098-z</a>.
+      PMID: 36694132; PMCID: PMC9875526.
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+/* ══════════════════════════════════════
+   STAGE DEFINITIONS
+══════════════════════════════════════ */
+const STAGES = [
+  { code:'L1', sTag:'S01', img:'1.jpg',  title:'L1 — Leaf Explant',
+    desc:'Leaves from greenhouse plants (explant)' },
+  { code:'D1', sTag:'S02', img:'2.jpg',  title:'D1 — Dedifferentiation 1 wk',
+    desc:'Explants during dedifferentiation at 1 week' },
+  { code:'D2', sTag:'S03', img:'3.jpg',  title:'D2 — Dedifferentiation 2 wk',
+    desc:'Explants during dedifferentiation at 2 weeks' },
+  { code:'D3', sTag:'S04', img:'4.jpg',  title:'D3 — Dedifferentiation 5 wk',
+    desc:'Explants during dedifferentiation at 5 weeks' },
+  { code:'C1', sTag:'S05', img:'5.jpg',  title:'C1 — Primary Callus',
+    desc:'Compact primary callus, 3 months after induction' },
+  { code:'C2', sTag:'S06', img:'6.jpg',  title:'C2 — Embryogenic Callus',
+    desc:'Embryogenic callus, 7 months after induction' },
+  { code:'C3', sTag:'S07', img:'7.jpg',  title:'C3 — Cell Clusters',
+    desc:'Established cell clusters, 4 months in liquid proliferation medium' },
+  { code:'R1', sTag:'S08', img:'8.jpg',  title:'R1 — Pro-embryogenic Masses',
+    desc:'Pro-embryogenic masses, 1 week in redifferentiation medium after auxin withdrawal' },
+  { code:'R2', sTag:'S09', img:'9.jpg',  title:'R2 — Redifferentiation 24 h',
+    desc:'24 h in redifferentiation medium after reducing cell density' },
+  { code:'R3', sTag:'S10', img:'10.jpg', title:'R3 — Redifferentiation 72 h',
+    desc:'72 h in redifferentiation medium after reducing cell density' },
+  { code:'R4', sTag:'S11', img:'11.jpg', title:'R4 — Redifferentiation 10 days',
+    desc:'10 days in redifferentiation medium after reducing cell density' },
+  { code:'E1', sTag:'S12', img:'12.jpg', title:'E1 — Globular Embryos',
+    desc:'Globular embryos after 3 weeks of culture' },
+];
+
+/* ══════════════════════════════════════
+   COLOR SCALE
+══════════════════════════════════════ */
+const COLOR_STOPS = [
+  [0.00, [0,   0,   139]],
+  [0.15, [20,  80,  210]],
+  [0.32, [0,   170, 200]],
+  [0.48, [160, 220, 240]],
+  [0.60, [255, 240, 110]],
+  [0.75, [255, 165,  30]],
+  [0.88, [220,  60,  10]],
+  [1.00, [200,   0,   0]],
+];
+function interpColor(t) {
+  t = Math.max(0, Math.min(1, t));
+  for (let i = 1; i < COLOR_STOPS.length; i++) {
+    const [t0,c0] = COLOR_STOPS[i-1], [t1,c1] = COLOR_STOPS[i];
+    if (t <= t1) {
+      const f = (t-t0)/(t1-t0);
+      return `rgb(${Math.round(c0[0]+f*(c1[0]-c0[0]))},${Math.round(c0[1]+f*(c1[1]-c0[1]))},${Math.round(c0[2]+f*(c1[2]-c0[2]))})`;
+    }
+  }
+  return 'rgb(200,0,0)';
+}
+function buildLegend() {
+  const el = document.getElementById('legend-scale');
+  for (let i = 0; i < 60; i++) {
+    const s = document.createElement('div');
+    s.style.cssText = `flex:1;height:100%;background:${interpColor(i/59)}`;
+    el.appendChild(s);
+  }
+}
+
+/* ══════════════════════════════════════
+   STATS
+══════════════════════════════════════ */
+const avg = a => a.reduce((s,v) => s+v, 0) / a.length;
+function stdev(a) {
+  const m = avg(a);
+  return Math.sqrt(a.reduce((s,v) => s+(v-m)**2, 0) / a.length);
+}
+
+/* ══════════════════════════════════════
+   DATA STORE
+══════════════════════════════════════ */
+let geneData = {};
+let dataReady = false;
+
+async function loadCSV() {
+  // Show loading indicator
+  document.getElementById('loading-bar').classList.add('visible');
+
+  try {
+    const [res1, res2] = await Promise.all([
+      fetch('coffee_SE_data_part1.csv'),
+      fetch('coffee_SE_data_part2.csv')
+    ]);
+
+    if (!res1.ok) throw new Error(`Failed to load part1: ${res1.status}`);
+    if (!res2.ok) throw new Error(`Failed to load part2: ${res2.status}`);
+
+    const text1 = await res1.text();
+    const text2 = await res2.text();
+
+    const lines1 = text1.trim().split('\n');
+    // Remove the header row from part2 before merging
+    const lines2 = text2.trim().split('\n').slice(1);
+
+    // ✅ FIX: lines2 already has its header stripped — just spread directly
+    const allLines = [...lines1, ...lines2];
+
+    // Auto-detect delimiter
+    const delim = allLines[0].includes('\t') ? '\t' : ',';
+
+    const header = allLines[0].split(delim).map(h => h.trim().replace(/^"|"$/g, ''));
+
+    const colIdx = {};
+    header.forEach((h, i) => { colIdx[h] = i; });
+
+    for (let r = 1; r < allLines.length; r++) {
+      const line = allLines[r].trim();
+      if (!line) continue;
+
+      const cols = line.split(delim).map(c => c.trim().replace(/^"|"$/g, ''));
+      if (!cols[0]) continue;
+
+      const id = cols[0].toUpperCase();
+      const stageVals = {};
+
+      STAGES.forEach(st => {
+        const vals = [];
+        for (let rep = 1; rep <= 12; rep++) {
+          const key = `${st.sTag}_R${String(rep).padStart(2, '0')}`;
+          const ci = colIdx[key];
+          if (ci !== undefined && cols[ci] !== '' && cols[ci] !== undefined) {
+            const v = parseFloat(cols[ci]);
+            if (!isNaN(v)) vals.push(v);
+          }
+        }
+        stageVals[st.sTag] = vals;
+      });
+
+      geneData[id] = stageVals;
+    }
+
+    dataReady = true;
+    console.log(`✅ Loaded ${Object.keys(geneData).length} genes from both CSV parts.`);
+
+  } catch (e) {
+    console.error('CSV load error:', e.message);
+    document.getElementById('loading-bar').textContent = `⚠️ Error loading dataset: ${e.message}`;
+    document.getElementById('loading-bar').classList.add('visible');
+    return; // leave loading bar visible as error message
+  }
+
+  // Hide loading bar on success
+  document.getElementById('loading-bar').classList.remove('visible');
+}
+
+/* ══════════════════════════════════════
+   RENDER EMPTY GRID
+══════════════════════════════════════ */
+function buildEmptyGrid() {
+  const grid = document.getElementById('stage-grid');
+  grid.innerHTML = '';
+  STAGES.forEach(st => {
+    const card = document.createElement('div');
+    card.className = 'stage-card';
+    card.id = `card-${st.sTag}`;
+    card.innerHTML = `
+      <div class="stage-img-wrap">
+        <img src="${st.img}" alt="${st.title}" loading="lazy"
+             onerror="this.outerHTML='<span class=\\'img-placeholder-text\\'>Image not available</span>'">
+        <span class="stage-label-badge">${st.code}</span>
+      </div>
+      <div class="bar-row" id="bar-${st.sTag}">
+        <div class="bar-outer">
+          <div class="bar-fill" id="fill-${st.sTag}" style="width:0%;background:#e0d8c8;"></div>
+        </div>
+        <div class="bar-stats">
+          <span class="bar-mean" id="mean-${st.sTag}" style="color:var(--muted);font-style:italic;font-weight:400;">—</span>
+          <span class="bar-sd"   id="sd-${st.sTag}"></span>
+        </div>
+        <div class="rep-tooltip" id="tip-${st.sTag}"></div>
+      </div>
+      <div class="stage-name">
+        <strong>${st.title}</strong>${st.desc}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+/* ══════════════════════════════════════
+   QUERY
+══════════════════════════════════════ */
+function queryGene() {
+  const rawId  = document.getElementById('gene-input').value.trim();
+  const geneId = rawId.toUpperCase();
+
+  hideBanner();
+
+  if (!geneId) return;
+
+  if (!dataReady) {
+    alert('Dataset is still loading, please wait a moment and try again.');
+    return;
+  }
+
+  const sv = geneData[geneId];
+  if (!sv) {
+    showBanner(rawId);
+    clearBars();
+    document.getElementById('gene-info-bar').style.display = 'none';
+    document.getElementById('legend-wrap').style.display   = 'none';
+    return;
+  }
+
+  // Normalise by mean across stages
+  const means = STAGES.map(st => sv[st.sTag].length ? avg(sv[st.sTag]) : 0);
+  const gMin  = Math.min(...means);
+  const gMax  = Math.max(...means);
+  const gRng  = gMax - gMin || 1;
+
+  STAGES.forEach((st) => {
+    const vals = sv[st.sTag];
+    if (!vals.length) return;
+
+    const m   = avg(vals);
+    const s   = stdev(vals);
+    const t   = (m - gMin) / gRng;
+    const col = interpColor(t);
+    const barW = Math.round(t * 100);
+
+    document.getElementById(`fill-${st.sTag}`).style.width      = `${barW}%`;
+    document.getElementById(`fill-${st.sTag}`).style.background = col;
+    document.getElementById(`mean-${st.sTag}`).textContent       = m.toFixed(2);
+    document.getElementById(`mean-${st.sTag}`).style.fontStyle   = 'normal';
+    document.getElementById(`mean-${st.sTag}`).style.fontWeight  = '600';
+    document.getElementById(`mean-${st.sTag}`).style.color       = 'var(--text)';
+    document.getElementById(`sd-${st.sTag}`).textContent         = `±${s.toFixed(2)}`;
+
+    // Build tooltip
+    let bioHTML = `<div class="rep-tooltip-title">${st.title}</div>`;
+    for (let b = 0; b < 4; b++) {
+      const techSpans = vals.slice(b*3, b*3+3).map((v, ti) =>
+        `<span>T${ti+1}: ${v !== undefined ? v.toFixed(2) : '–'}</span>`
+      ).join('');
+      bioHTML += `
+        <div class="bio-group">
+          <span class="bio-label">Biological rep ${b+1}</span>
+          <div class="bio-vals">${techSpans}</div>
+        </div>`;
+    }
+    bioHTML += `
+      <div class="tooltip-summary">
+        Mean: <em>${m.toFixed(4)}</em>&ensp;SD: <em>${s.toFixed(4)}</em>&ensp;n = ${vals.length}
+      </div>`;
+
+    document.getElementById(`tip-${st.sTag}`).innerHTML = bioHTML;
+    document.getElementById(`card-${st.sTag}`).classList.add('has-data');
+  });
+
+  document.getElementById('gene-info-bar').style.display  = 'flex';
+  document.getElementById('gene-id-display').textContent  = `Gene ID: ${geneId}`;
+  document.getElementById('legend-wrap').style.display    = 'block';
+  document.getElementById('stage-grid').dataset.currentGene = geneId;
+  document.getElementById('intro-text').style.display     = 'none';
+}
+
+/* ══════════════════════════════════════
+   RESET
+══════════════════════════════════════ */
+function resetView() {
+  document.getElementById('gene-input').value = '';
+  hideBanner();
+  clearBars();
+  document.getElementById('gene-info-bar').style.display = 'none';
+  document.getElementById('legend-wrap').style.display   = 'none';
+  document.getElementById('intro-text').style.display    = 'block';
+  document.getElementById('stage-grid').dataset.currentGene = '';
+}
+
+function clearBars() {
+  STAGES.forEach(st => {
+    const fill = document.getElementById(`fill-${st.sTag}`);
+    if (fill) { fill.style.width = '0%'; fill.style.background = '#e0d8c8'; }
+    const meanEl = document.getElementById(`mean-${st.sTag}`);
+    if (meanEl) {
+      meanEl.textContent      = '—';
+      meanEl.style.color      = 'var(--muted)';
+      meanEl.style.fontStyle  = 'italic';
+      meanEl.style.fontWeight = '400';
+    }
+    const sdEl = document.getElementById(`sd-${st.sTag}`);
+    if (sdEl) sdEl.textContent = '';
+    const tipEl = document.getElementById(`tip-${st.sTag}`);
+    if (tipEl) tipEl.innerHTML = '';
+    const card = document.getElementById(`card-${st.sTag}`);
+    if (card) card.classList.remove('has-data');
+  });
+}
+
+/* ══════════════════════════════════════
+   NOT-FOUND BANNER
+══════════════════════════════════════ */
+function showBanner(rawId) {
+  const banner = document.getElementById('not-found-banner');
+  document.getElementById('nf-body-text').innerHTML =
+    `The gene <code>${rawId}</code> wasn't found in the dataset. Please check the gene ID and try again.`;
+  banner.style.display = 'flex';
+}
+function hideBanner() {
+  document.getElementById('not-found-banner').style.display = 'none';
+}
+
+/* ══════════════════════════════════════
+   DOWNLOAD
+══════════════════════════════════════ */
+function downloadCSV() {
+  const geneId = document.getElementById('stage-grid').dataset.currentGene;
+  if (!geneId || !geneData[geneId]) return;
+  const sv = geneData[geneId];
+
+  const repHeaders  = STAGES.flatMap(st =>
+    Array.from({length:12}, (_,r) => `${st.code}_${st.sTag}_R${String(r+1).padStart(2,'0')}`)
+  );
+  const statHeaders = STAGES.flatMap(st => [`${st.code}_Mean`, `${st.code}_SD`, `${st.code}_n`]);
+  const repVals     = STAGES.flatMap(st => sv[st.sTag].map(v => v.toFixed(4)));
+  const statVals    = STAGES.flatMap(st => {
+    const vals = sv[st.sTag];
+    return [avg(vals).toFixed(4), stdev(vals).toFixed(4), vals.length];
+  });
+
+  const csv  = [['GeneID', ...repHeaders, ...statHeaders].join(','),
+                [geneId, ...repVals, ...statVals].join(',')].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `${geneId}_expression.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+/* ══════════════════════════════════════
+   KEYBOARD + INIT
+══════════════════════════════════════ */
+document.getElementById('gene-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') queryGene();
+});
+
+buildLegend();
+buildEmptyGrid();
+loadCSV();
+</script>
+</body>
+</html>
